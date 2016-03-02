@@ -173,40 +173,62 @@ sudo ln -s /usr/local/apache-maven-3.3.3/bin/mvn /usr/bin/mvn
 mvn --version
 ```
 
-遇到的一些坑以及需要注意的问题
--------------------------
+如何启动che
+-----------
 
-### 1. 在远程服务器上启动che需要传入server ip
-
-这又是一个需要细读文档才能发现的问题。如果我们在远程linux服务器上启动che时，需要使用一个特定的参数传入server ip才能让che正常运行。其原因是当che使用docker创建了一些workspace machine后，它们需要该参数才能正确的找到che server。
-
-- 如果使用docker的方式，则需要在命令行中加入`-e DOCKER_MACHINE_HOST=<server_ip>`，比如：
-
-    ```
-    docker run 
-        ...
-        -e DOCKER_MACHINE_HOST=198.199.105.97
-        codenvy/che
-    ```
-
-- 如果使用`che.sh`脚本启动，则需要传入`-r:<server_ip>`，比如：
-
-    ```
-    che.sh -r:198.199.105.97 run
-    ```
-
-但在本地（比如mac/windows上），由于docker只能以虚拟机的方式运行，che事先把该参数设好了，所以不需要传入它们也能正常运行。这就是为什么在本地一切正常，但是在远程就不行的原因。
-
-另外缺少该参数后，che只是在创建project的时候才会出现一些不是特别明显的错误。如果当你创建project时，看到它的输出中有一些类似
+我们推荐使用docker来启动，这样对环境的依赖最小。我们当前使用的启动命令如下：
 
 ```
-Not able to connect to ws://che-host:8080/che/api/eventbus/?token=dummy_token because Connection timeout. Retrying
+docker run -ti --net=host 
+    -v /var/run/docker.sock:/var/run/docker.sock 
+    -v /home/user/che/lib:/home/user/che/lib-copy 
+    -v /home/user/che/workspaces:/home/user/che/workspaces 
+    -v /home/user/che/tomcat/temp/local-storage:/home/user/che/tomcat/temp/local-storage 
+    -e DOCKER_MACHINE_HOST=198.199.105.97 
+    codenvy/che:nightly
 ```
 
-这样的错误时，需要看看是不是这个原因。
+随着che的更新，这个命令可能也需要跟着更新，具体可参考官方文档：<https://eclipse-che.readme.io/docs/usage-docker>
 
-mvn编译che时，提示`OutOfMemoryError`
-----------------------------------
+这里面有几个需要注意的点：
+
+1. `-e DOCKER_MACHINE_HOST=198.199.105.97` 这是非常重要的一步。当我们使用浏览器的机器与che运行的机器不在同一台机器上时，就必须设置这个参数，否则不能正常工作，这个问题曾经困扰了我们很久。后面的ip就是运行che的服务器的ip。这个参数与`che.sh`的`-r:198.199.105.97`作用是一样的
+
+2. `-v /var/run/docker.sock:/var/run/docker.sock` 这也是非常重要的一个参数。这样使得che可以在内部复用外面提供的docker来创建各workspace machine，从而避免了docker in docker所带来的各种问题
+
+3. `--net=host` 这个参数使用我们不需要像以前那样在启动docker时传入一大堆的端口映射的配置了。结合che自己内部的操作，它可以自己将服务器上的某个端口映射到某个workspace machine中的端口，非常方便
+
+4. 多个类似于`-v /home/user/che/lib:/home/user/che/lib-copy`的配置，是为了让用户产生的数据保存在服务器上，不会因为che docker container的重启而丢失。比如创建的workspace和project，及项目文件等。注意我们如果需要，还可以把maven的缓存目录如`~/.m2`等，也挂载上去
+
+如何访问che
+-----------
+
+启动che后，我们就可以打开浏览器，输入：<http://198.199.105.97:8080>。
+
+默认情况下，它会打开`/dashboard`页面，我们可以来创建一些workspace或者project，之后就可以打开IDE页面，进行文件的编辑，以及运行各种命令。
+
+一些值得注意的功能：
+
+### 1. Terminal
+
+可以直接ssh到workspace machine，执行各种操作。
+
+对于che来说是很好的功能补充，可以方便得做各种它没有提供或者不太好用的功能，比如git提交什么的。
+
+![terminal](./images/terminal.png)
+
+### 2. 访问内部服务
+
+每个workspace machine内部都可以有多个服务。如果我们在workspace对应的recipe里声明了需要暴露的端口后，che会自动把一个外部可访问的端口映射到machine中对应的内部端口。
+
+![services](./images/services.png)
+
+比如在上图中，用户就可以访问：<http://198.199.105.97:33731> 来访问该machine中的`8080`端口。
+
+从源代码编译che
+-------------
+
+### mvn编译che时，提示`OutOfMemoryError`
 
 这是由于mvn默认使用的内存比较小，编译che时不够用，我们可以给它设大一些：
 
