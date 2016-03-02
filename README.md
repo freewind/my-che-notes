@@ -225,13 +225,83 @@ docker run -ti --net=host
 
 比如在上图中，用户就可以访问：<http://198.199.105.97:33731> 来访问该machine中的`8080`端口。
 
-从源代码编译che
--------------
+从源代码编译并执行che
+-------------------
 
-### mvn编译che时，提示`OutOfMemoryError`
+有时候我们想直接以java程序的方式运行che，或者为了方便开发，我们需要手动编译che。这里介绍一下怎么做，以及会遇到什么问题。
 
-这是由于mvn默认使用的内存比较小，编译che时不够用，我们可以给它设大一些：
+### 1. 下载源代码
 
 ```
-export MAVEN_OPTS="-Xmx1024m -XX:MaxPermSize=256m"
+git clone https://github.com/eclipse/che.git
 ```
+
+### 2. 编译
+
+需要注意的是，che从codenvy名下移动eclipse后，把以前的多个仓库以目录的形式放在了同一个仓库中。
+
+如果我们的目的仅仅是编译出最终的包，则需要进入`assembly`目录（而不是在根目录下）执行`mvn clean install`，即：
+
+```
+cd assembly
+mvn clean install
+```
+
+如果成功的话，会看到类似于这样的输出：
+
+```
+[INFO] --- maven-install-plugin:2.5.2:install (default-install) @ assembly-main ---
+[INFO] Installing /home/ubuntu/workspace/che/assembly/assembly-main/pom.xml to /home/ubuntu/.m2/repository/org/eclipse/che/assembly-main/4.0.0-RC10-SNAPSHOT/assembly-main-4.0.0-RC10-SNAPSHOT.pom
+[INFO] Installing /home/ubuntu/workspace/che/assembly/assembly-main/target/eclipse-che-4.0.0-RC10-SNAPSHOT.zip to /home/ubuntu/.m2/repository/org/eclipse/che/assembly-main/4.0.0-RC10-SNAPSHOT/assembly-main-4.0.0-RC10-SNAPSHOT.zip
+[INFO] Installing /home/ubuntu/workspace/che/assembly/assembly-main/target/eclipse-che-4.0.0-RC10-SNAPSHOT.tar.gz to /home/ubuntu/.m2/repository/org/eclipse/che/assembly-main/4.0.0-RC10-SNAPSHOT/assembly-main-4.0.0-RC10-SNAPSHOT.tar.gz
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary:
+[INFO]
+[INFO] Che IDE :: Parent .................................. SUCCESS [  4.083 s]
+[INFO] Che Machine Plugins :: Packaging ................... SUCCESS [ 20.541 s]
+[INFO] Che Assembly Machine Plugins :: Server ............. SUCCESS [  2.615 s]
+[INFO] Che IDE :: Compiling GWT Application ............... SUCCESS [06:05 min]
+[INFO] Che IDE :: Assemblies Tomcat ....................... SUCCESS [03:06 min]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 09:40 min
+[INFO] Finished at: 2016-03-02T07:31:52+00:00
+[INFO] Final Memory: 82M/1324M
+[INFO] ------------------------------------------------------------------------
+```
+
+它将在`assembly/assembly-main/target`下打出相应的`.zip`和`.tar.gz`的包，同时也会有一个未压缩的目录，里面有`che.sh`可执行
+
+#### 编译过程中出现OutOfMemoryError
+
+由于che使用的是jdk 1.8，默认情况下MaxHeapSize是`4G`，在编译过程中通常不会出现`OutOfMemoryError`。
+
+如果出现了，则可能是因为机器的总体可用内存不够。这时可以检查一下swap file的大小是多少，如果不够的话，可以再增加一些。
+
+#### 避免重复下载SNAPSHOT
+
+由于我们从源代码编译时，che的版本总是SNAPSHOT的，这就意味着每次maven可能都会去线上检查或者下载最新的。由于che模块众多，如果我们的服务器是在国内，下载这些依赖就会花费大量时间。
+
+所以如果下载好一次后，我们并不希望再去下载新的SNAPSHOT依赖，可以加上`--offline`参数：
+
+```
+mvn clean install --offline
+```
+
+### 3. 以java程序执行
+
+以当前的源代码为例，执行完前一步的操作后，则可以找到如下的`che.sh`:
+
+```
+/home/twer/workspace/che/assembly/assembly-main/target/eclipse-che-4.0.0-RC9-SNAPSHOT/eclipse-che-4.0.0-RC9-SNAPSHOT/bin/che.sh
+```
+
+传入`-r:<server_ip>`后，即可执行：
+
+```
+./che.sh -r:198.199.105.97 run
+```
+
+`-r`参数与前面提到的`DOCKER_MACHINE_HOST`是一个作用。
+
