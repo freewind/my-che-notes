@@ -206,6 +206,14 @@ docker run -ti --net=host
 
 4. 多个类似于`-v /home/user/che/lib:/home/user/che/lib-copy`的配置，是为了让用户产生的数据保存在服务器上，不会因为che docker container的重启而丢失。比如创建的workspace和project，及项目文件等。注意我们如果需要，还可以把maven的缓存目录如`~/.m2`等，也挂载上去
 
+### 3. 以Java方式启动
+
+除了docker以外，还可以选择[下载打好的che包](https://www.eclipse.org/che/download/)，或者[从源代码编译](https://github.com/eclipse/che/tree/master/assembly)，然后以java程序的方式来运行。
+
+在这种情况下，我们通常会使用`che.sh`脚本来启动。`che.sh`为了简化操作，里面提供了很多选项，具体可以细看这个文档：<https://eclipse-che.readme.io/docs/usage>
+
+注意使用`che.sh`时除了可以以Java形式来运行，还可以通过`-i`来运行一个官方提供的docker image。
+
 如何访问che
 -----------
 
