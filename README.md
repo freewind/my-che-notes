@@ -201,7 +201,7 @@ che的仓库和模块
 
 ### 1. 特别注意
 
-在使用类似于`codenvy/che:nightly`这样内容会不断变化的image时，最好先把旧的删除，否则可能出现引用的还是旧image的情况。可参见我当时遇到的问题：<https://github.com/eclipse/che/issues/609
+在使用类似于`codenvy/che:nightly`这样内容会不断变化的image时，最好先把旧的删除，否则可能出现引用的还是旧image的情况。可参见我当时遇到的问题：<https://github.com/eclipse/che/issues/609>
 
 ### 2. 使用docker启动
 
@@ -666,3 +666,18 @@ docker cp <containerId>:/file/path/within/container /host/path/target
 比如java项目中最常用的`ubuntu_jdk8`: <https://github.com/codenvy/dockerfiles/tree/master/ubuntu_jdk8>
 
 我们自定义的js前端: <https://github.com/freewind/dockerfiles/blob/add-stack-js_frontend/js_frontend/ubuntu/Dockerfile>
+
+帮助理解che代码的技术示例
+----------------------
+
+che中用到了很多技术，包括java和js的，其中有一些库可能并不是很常见的。在研究che的过程中，我把其中的一些技术点分离出来，做成了可以运行的小例子，帮助掌握它们：
+
+- <https://github.com/java-demos/guice-demo>: che中如何使用`@Inject`来注入依赖的
+- <https://github.com/java-demos/jersey-demo>: 如何使用`javax.ws.rx`中定义的rest注解（如`Path`）来创建rest api
+- <https://github.com/java-demos/swagger-jaxrs-demo>：如何在API的基础上生成swagger-ui需要的swagger.json文件
+- <https://github.com/java-demos/webjar-swagger-ui-demo>: 一种更好的在java项目中嵌入swagger-ui的方式
+- <https://github.com/java-demos/gwt-demo>: gwt的例子，它是che中IDE与plugins的核心
+- <https://github.com/java-demos/everrest-book-service-demo>: che中用于定义rest api的框架，它的特点是同时支持http和websocket形式的api
+- <https://github.com/js-demos/request-promise-demo>: 我们在[create-project脚本](https://github.com/freewind/che-operations)中用到的request库
+- <https://github.com/js-demos/socketio-chat-demo>: websocket的例子，这里用的是库是`socket.io`
+- <https://github.com/js-demos/websocket-lib-demo>: 我们在[create-project脚本](https://github.com/freewind/che-operations)中用到的websocket client库
