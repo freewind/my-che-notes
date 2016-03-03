@@ -340,6 +340,29 @@ websocket的API并没有像HTTP API那样漂亮的文档可供查看，在官方
 
 在<https://github.com/freewind/che-operations/blob/master/create-project.js#L57>这个例子里，展示了websocket api的用法。
 
+如何通过API来创建workspace和project
+--------------------------------
+
+Che提供了dashboard，可供我们来管理和创建workspace和project等，其地址为：<198.199.105.97:8080/dashboard>
+
+但是如果我们要把它集成到某个工具中，则需要在脚本中以API的方式来调用。
+
+我们已经有了可以运行的例子，参见：<https://github.com/freewind/che-operations/blob/master/create-project.js>
+
+这里我把其基本流程简单介绍一下，详细的可以直接看代码：
+
+1. 首先要访问`http://198.199.105.97:8080/api/auth/login`，登录一下。虽然在che的开源代码中弱化了帐号相关的功能，但是还是需要登录之后，才能调用其它的API。我们不需要传入任何用户名或密码都可以登录成功
+
+2. 调用`http://198.199.105.97:8080/api/workspace/config`并传入合适的参数，来创建一个workspace。这时只是创建，并没有启动
+
+3. 然后调用`http://198.199.105.97:8080/api/workspace/<workspaceId>/runtime`来启动该workspace。这是一个比较漫长的过程，因为server可能要docker pull某个image，并且要植入并启动代理程序。所以该操作被设计成为一个异步任务，对于客户端请求会很快返回
+
+4. 然后就要使用websocket api了。通过监听`ws://198.199.105.97:8080/api/ws/<workspaceId>`，在正常的情况下，会慢慢收到多条消息，检查消息类型是`RUNNING`还是`ERROR`
+
+5. 等workspace启动成功后，访问`http://198.199.105.97:8080/api/ext/project/<workspaceId>/import/<projectName>`并传入模板项目的git地址，把指定的项目导入到workspace中
+
+6. 如果该项目有一些预定义的命令（比如Java项目，可以预定义一些mvn命令），可以通过`http://198.199.105.97:8080/api/workspace/<workspaceId>/command`来创建
+
 如何使用Chrome及其它工具来监听请求
 ---------------------
 
