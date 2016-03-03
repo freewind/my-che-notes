@@ -176,6 +176,12 @@ mvn --version
 如何启动che
 -----------
 
+### 特别注意
+
+在使用类似于`codenvy/che:nightly`这样内容会不断变化的image时，最好先把旧的删除，否则可能出现引用的还是旧image的情况。可参见我当时遇到的问题：<https://github.com/eclipse/che/issues/609
+
+### 使用docker启动
+
 我们推荐使用docker来启动，这样对环境的依赖最小。我们当前使用的启动命令如下：
 
 ```
@@ -184,7 +190,7 @@ docker run -ti --net=host
     -v /home/user/che/lib:/home/user/che/lib-copy 
     -v /home/user/che/workspaces:/home/user/che/workspaces 
     -v /home/user/che/tomcat/temp/local-storage:/home/user/che/tomcat/temp/local-storage 
-    -e DOCKER_MACHINE_HOST=198.199.105.97 
+    -e CHE_DOCKER_MACHINE_HOST=198.199.105.97 
     codenvy/che:nightly
 ```
 
@@ -305,3 +311,302 @@ mvn clean install --offline
 
 `-r`参数与前面提到的`DOCKER_MACHINE_HOST`是一个作用。
 
+Che的API
+---------
+
+che中有两种类型的API，一种是通过HTTP访问，另一种是通过websocket。这两种API的作用不太一样。
+
+HTTP API更重要一些，用于让客户端来执行各种操作，以及查询各种信息。
+
+Websocket API主要是用于持续监听某些在后台需要很长时间才能执行完的操作（比如start workspace等），每当服务器上该操作有了新的进展，它就会向某个websocket中的channel里发送一条信息，发送到监听者那里。
+
+具体的API内容在这里不详细说明，在下面将会列出可供学习的地址。
+
+### HTTP API
+
+我们部署完che后，可以访问该路径查看漂亮的api文档：<http://198.199.105.97:8080/swagger/>（注意最后一定要有一个`/`，否则页面显示不正常）
+
+这里可以查看代码中暴露出来的API，即可以查看，又可以**运行**，比较方便。
+
+注意它暴露出来的API并不全面，有一些API还需要在Java代码里查看。可以通过在Java代码中搜索`@Path`来查找。
+
+这些API中，目前对我们最重要的应该是`/workspace`下面的各个API。
+
+### Websocket API
+
+websocket的API并没有像HTTP API那样漂亮的文档可供查看，在官方文档<https://eclipse-che.readme.io/docs/events>里有一些介绍，但我们有需要的时候，还是需要查看源代码，以及自己通过试验的方式来探索。这里会稍麻烦一些，需要认真追踪che的代码。
+
+在<https://github.com/freewind/che-operations/blob/master/create-project.js#L57>这个例子里，展示了websocket api的用法。
+
+如何使用Chrome及其它工具来监听请求
+---------------------
+
+### HTTP请求
+
+![chrome-network](./images/chrome-network.png)
+
+### Websocket请求
+
+![chrome-websocket-1](./images/chrome-websocket-1.png)
+
+![chrome-websocket-2](./images/chrome-websocket-2.png)
+
+### Advanced REST Client
+
+安装地址：<https://chrome.google.com/webstore/detail/advanced-rest-client/hgmloofddffdnphfgcellkdfbfbjeloo/reviews?hl=en-US&utm_source=ARC>
+
+![ARC-websocket](./images/ARC-websocket.png)
+
+### curl
+
+curl比较常用，不详细说明了。提示，我们可以在<http://198.199.105.97:8080/swagger/>里执行了某个API后，它会把对应的`curl`的代码显示出来，非常贴心。
+
+![swagger-curl.png](./images/swagger-curl.png)
+
+```
+curl -X POST --header 'Content-Type: application/json' --header 'Accept: application/json' -d '{}' 'http://198.199.105.97:8080/api/auth/login'
+```
+
+### wscat
+
+这是一个websocket的命令行工具，它的功能比前面介绍的Advanced REST Client更加强大。比如wscat还支持subprotocol，而Advanced REST Client不支持。但在我们这里，目前还用不上这个功能。
+
+安装：
+
+```
+npm install -g wscat
+```
+
+使用：
+
+```
+~ $ wscat -c ws://198.199.105.97:8080/api/ws/workspace6zgg1zlr4rooz8hr
+connected (press CTRL+C to quit)
+> {"uuid":"fbcbcc6f-8b27-4e53-fc15-2682421bb5ee","method":"POST","path":null,"headers":[{"name":"x-everrest-websocket-message-type","value":"subscribe-channel"}],"body":"{\"channel\":\"vfs\"}"}
+  < {"headers":[{"name":"x-everrest-websocket-message-type","value":"subscribe-channel"}],"method":"POST","responseCode":200,"uuid":"fbcbcc6f-8b27-4e53-fc15-2682421bb5ee","body":"{\"channel\":\"vfs\"}"}
+>
+```
+
+如何查看各种日志
+--------------
+
+che的架构很灵活，日志也分散在多个地方。并且有的与docker相关，有的与tomcat，或者其它软件相关。
+
+### docker相关的操作
+
+由于che中大量使用docker，我们先回顾一下常用的docker操作。
+
+查看正在运行的docker container:
+
+```
+docker ps
+```
+
+查看全部docker container，包括已经关闭的：
+
+```
+docker ps -a
+```
+
+只显示docker container id:
+
+```
+docker ps -q
+```
+
+这样我们就可以快速`kill`或者`rm`多个docker container了:
+
+```bash
+docker kill `docker ps -q`
+docker rm -f `docker ps -aq`
+```
+
+### 查看docker container的日志
+
+先拿到docker container的id：
+
+```
+$ docker ps
+CONTAINER ID        IMAGE                      COMMAND                  CREATED              STATUS              PORTS               NAMES
+0afab24b324e        nowind/che:good-20160216   "/bin/sh -c 'sudo rm "   About a minute ago   Up About a minute                       stoic_heyrovsky
+```
+
+然后查看日志：
+
+```
+docker logs 0afab24b324e
+```
+
+或者同时监控新的日志：
+
+```
+docker logs -f 0afab24b324e
+```
+
+注意，我们可以只输入container id的前几位来简化操作，只要匹配上的只有一个，就没有问题：
+
+```
+docker logs -f 0af
+```
+
+
+### 如何进入一个docker container
+
+如果我们的che是通过docker执行的，或者需要进入一个workspace machine，我们就需要先进去才能看到日志。
+
+```
+docker exec -it 0afab24b324e bash 
+```
+
+这样就进入到该container内部，可以对它进行各种各样的linux操作了。
+
+### tomcat日志
+
+che中的大部分操作都在tomcat中，所以日志也主要集中在tomcat的日志文件里。
+
+che的目录结构是这样的（只显示2层）：
+
+```
+$ tree -L 2 .
+.
+|-- bin
+|   |-- che.bat
+|   |-- che-install-plugin.bat
+|   |-- che-install-plugin.sh
+|   `-- che.sh
+|-- conf
+|   `-- che.properties
+|-- lib
+|   |-- terminal
+|   `-- ws-agent.zip
+|-- LICENSE
+|-- plugins
+|   |-- examples
+|   |-- ide
+|   |-- README
+|   |-- ws-agent
+|   `-- ws-master
+|-- README
+|-- sdk
+|   |-- assembly-ide-war
+|   |-- assembly-machine-server
+|   |-- assembly-machine-war
+|   |-- assembly-main
+|   |-- che-plugin-sdk-logger-core.jar
+|   |-- che-plugin-sdk-logger.jar
+|   `-- che-plugin-sdk-tools.jar
+|-- stacks
+|   |-- predefined-stacks.json
+|   `-- stack_img
+|-- templates
+|   `-- samples.json
+`-- tomcat
+    |-- bin
+    |-- conf
+    |-- endorsed
+    |-- lib
+    |-- LICENSE
+    |-- LICENSE-logback.txt
+    |-- LICENSE-mit.txt
+    |-- LICENSE-slf4j.txt
+    |-- logs
+    |-- NOTICE
+    |-- RELEASE-NOTES
+    |-- RUNNING.txt
+    |-- temp
+    |-- webapps
+    `-- work
+```
+
+其中tomcat的日志在`/tomcat/logs`下面，按`yyyy/MM/dd`分组后，有两个：
+
+- `catalina-?.log` tomcat本身的执行日志，各种运行信息和异常信息
+- `localhost-access-?.log` 客户端的http访问记录
+
+### docker中运行的che
+
+docker中运行的che路径是固定的：
+
+```
+/home/user/che
+```
+
+则其tomcat logs路径为：
+
+```
+/home/user/che/tomcat/logs/machine/logs
+```
+
+### apache的日志地址
+
+我们的js项目使用的workspace machine中运行了apache来提供页面访问，其日志路径为：
+
+```
+/var/log/apache2
+```
+
+注意，需要使用root身份才能进入该目录，但是由于某些[不明原因](https://github.com/docker/docker/issues/5899)，在workspace machine中似乎不能切换为root，好在可以使用这样的方式来查看：
+
+```
+sudo ls -al /var/log/apache2
+```
+
+显示类似于：
+
+```
+-rw-r-----  1 root adm    1424 Mar  2 12:37 access.log
+-rw-r-----  1 root adm     274 Mar  2 12:35 error.log
+-rw-r-----  1 root adm       0 Feb 24 09:11 other_vhosts_access.log
+```
+
+然后：
+
+```
+sudo tail -F /var/log/apache2/access.log
+sudo tail -F /var/log/apache2/error.log
+sudo tail -F /var/log/apache2/other_vhosts_access.log
+```
+
+### 如何将che server中tomcat的日志级别调到debug
+
+tomcat的logger默认级别是`info`。有时为了方便调试，我们需要把logger设为`debug`，以便输出更多的Java日志。
+
+如果我们在是docker中启动的che，那么tomcat的配置文件地址是：`/home/user/che/tomcat/conf/logback.xml`。我们可以利用docker的`-v`来让它使用我们自定义的配置文件：
+
+```
+wget https://raw.githubusercontent.com/eclipse/che-lib/master/che-tomcat8-slf4j-logback/src/assembly/conf/logback.xml
+```
+
+对它进行修改后，在启动che的时候可以加上这个参数：
+
+```
+-v path/to/logback.xml:/home/user/che/tomcat/conf/logback.xml
+```
+
+更多办法可以参考这个issue: <https://github.com/eclipse/che/issues/613>
+
+### 如何将workspace machine中植入的tomcat的日志级别调到debug
+
+当我们创建workspace时，che server会在内部启动一个docker container，并且将`lib/ws-agent.zip`植入进去。
+
+相对于直接修改che server的tomcat，这种情况要复杂一些。我目前想到的办法是这样的：首先使用docker启动一个che，然后进入该container把它的`/home/user/che/lib/ws-agent.zip`拷贝出来，修改其中的`logback.xml`并重新打好包。然后重新启动che时，使用`-v path/to/modified/ws-agent.zip:/home/user/che/lib/ws-agent.zip`，这样就可以使用workspace machine中使用修改过的ws-agent了。
+
+将docker container中的文件拷贝到外面的命令是:
+
+```
+docker cp <containerId>:/file/path/within/container /host/path/target
+```
+
+### 如何知道che的docker image里有什么
+
+在这里：<https://github.com/eclipse/che/blob/master/Dockerfile>
+
+### 如何知道workspace machine里有什么
+
+每个workspace都对应了一个recipe，里面定义了这个workspace是什么语言，需要安装什么软件，暴露哪些端口等等。
+
+官方所有的定义都在这里：<https://github.com/codenvy/dockerfiles>
+
+比如java项目中最常用的`ubuntu_jdk8`: <https://github.com/codenvy/dockerfiles/tree/master/ubuntu_jdk8>
+
+我们自定义的js前端: <https://github.com/freewind/dockerfiles/blob/add-stack-js_frontend/js_frontend/ubuntu/Dockerfile>
