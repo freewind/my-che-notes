@@ -176,11 +176,11 @@ mvn --version
 如何启动che
 -----------
 
-### 特别注意
+### 1. 特别注意
 
 在使用类似于`codenvy/che:nightly`这样内容会不断变化的image时，最好先把旧的删除，否则可能出现引用的还是旧image的情况。可参见我当时遇到的问题：<https://github.com/eclipse/che/issues/609
 
-### 使用docker启动
+### 2. 使用docker启动
 
 我们推荐使用docker来启动，这样对环境的依赖最小。我们当前使用的启动命令如下：
 
@@ -279,13 +279,13 @@ mvn clean install
 
 它将在`assembly/assembly-main/target`下打出相应的`.zip`和`.tar.gz`的包，同时也会有一个未压缩的目录，里面有`che.sh`可执行
 
-#### 编译过程中出现OutOfMemoryError
+#### 2.1 编译过程中出现OutOfMemoryError
 
 由于che使用的是jdk 1.8，默认情况下MaxHeapSize是`4G`，在编译过程中通常不会出现`OutOfMemoryError`。
 
 如果出现了，则可能是因为机器的总体可用内存不够。这时可以检查一下swap file的大小是多少，如果不够的话，可以再增加一些。
 
-#### 避免重复下载SNAPSHOT
+#### 2.2 避免重复下载SNAPSHOT
 
 由于我们从源代码编译时，che的版本总是SNAPSHOT的，这就意味着每次maven可能都会去线上检查或者下载最新的。由于che模块众多，如果我们的服务器是在国内，下载这些依赖就会花费大量时间。
 
@@ -294,6 +294,8 @@ mvn clean install
 ```
 mvn clean install --offline
 ```
+
+注意：有时候这种方法会失效，需要根据实际情况寻找对策。
 
 ### 3. 以java程序执行
 
@@ -322,7 +324,7 @@ Websocket API主要是用于持续监听某些在后台需要很长时间才能�
 
 具体的API内容在这里不详细说明，在下面将会列出可供学习的地址。
 
-### HTTP API
+### 1. HTTP API
 
 我们部署完che后，可以访问该路径查看漂亮的api文档：<http://198.199.105.97:8080/swagger/>（注意最后一定要有一个`/`，否则页面显示不正常）
 
@@ -332,7 +334,7 @@ Websocket API主要是用于持续监听某些在后台需要很长时间才能�
 
 这些API中，目前对我们最重要的应该是`/workspace`下面的各个API。
 
-### Websocket API
+### 2. Websocket API
 
 websocket的API并没有像HTTP API那样漂亮的文档可供查看，在官方文档<https://eclipse-che.readme.io/docs/events>里有一些介绍，但我们有需要的时候，还是需要查看源代码，以及自己通过试验的方式来探索。这里会稍麻烦一些，需要认真追踪che的代码。
 
@@ -341,23 +343,23 @@ websocket的API并没有像HTTP API那样漂亮的文档可供查看，在官方
 如何使用Chrome及其它工具来监听请求
 ---------------------
 
-### HTTP请求
+### 1. HTTP请求
 
 ![chrome-network](./images/chrome-network.png)
 
-### Websocket请求
+### 2. Websocket请求
 
 ![chrome-websocket-1](./images/chrome-websocket-1.png)
 
 ![chrome-websocket-2](./images/chrome-websocket-2.png)
 
-### Advanced REST Client
+### 3. Advanced REST Client
 
 安装地址：<https://chrome.google.com/webstore/detail/advanced-rest-client/hgmloofddffdnphfgcellkdfbfbjeloo/reviews?hl=en-US&utm_source=ARC>
 
 ![ARC-websocket](./images/ARC-websocket.png)
 
-### curl
+### 4. curl
 
 curl比较常用，不详细说明了。提示，我们可以在<http://198.199.105.97:8080/swagger/>里执行了某个API后，它会把对应的`curl`的代码显示出来，非常贴心。
 
@@ -367,7 +369,7 @@ curl比较常用，不详细说明了。提示，我们可以在<http://198.199.
 curl -X POST --header 'Content-Type: application/json' --header 'Accept: application/json' -d '{}' 'http://198.199.105.97:8080/api/auth/login'
 ```
 
-### wscat
+### 5. wscat
 
 这是一个websocket的命令行工具，它的功能比前面介绍的Advanced REST Client更加强大。比如wscat还支持subprotocol，而Advanced REST Client不支持。但在我们这里，目前还用不上这个功能。
 
@@ -392,7 +394,7 @@ connected (press CTRL+C to quit)
 
 che的架构很灵活，日志也分散在多个地方。并且有的与docker相关，有的与tomcat，或者其它软件相关。
 
-### docker相关的操作
+### 1. docker相关的操作
 
 由于che中大量使用docker，我们先回顾一下常用的docker操作。
 
@@ -421,7 +423,7 @@ docker kill `docker ps -q`
 docker rm -f `docker ps -aq`
 ```
 
-### 查看docker container的日志
+### 2. 查看docker container的日志
 
 先拿到docker container的id：
 
@@ -450,7 +452,7 @@ docker logs -f 0af
 ```
 
 
-### 如何进入一个docker container
+### 3. 如何进入一个docker container
 
 如果我们的che是通过docker执行的，或者需要进入一个workspace machine，我们就需要先进去才能看到日志。
 
@@ -460,7 +462,7 @@ docker exec -it 0afab24b324e bash
 
 这样就进入到该container内部，可以对它进行各种各样的linux操作了。
 
-### tomcat日志
+### 4. tomcat日志
 
 che中的大部分操作都在tomcat中，所以日志也主要集中在tomcat的日志文件里。
 
@@ -523,7 +525,7 @@ $ tree -L 2 .
 - `catalina-?.log` tomcat本身的执行日志，各种运行信息和异常信息
 - `localhost-access-?.log` 客户端的http访问记录
 
-### docker中运行的che
+### 5. docker中运行的che的日志路径
 
 docker中运行的che路径是固定的：
 
@@ -537,7 +539,7 @@ docker中运行的che路径是固定的：
 /home/user/che/tomcat/logs/machine/logs
 ```
 
-### apache的日志地址
+### 6. apache的日志地址
 
 我们的js项目使用的workspace machine中运行了apache来提供页面访问，其日志路径为：
 
@@ -567,7 +569,7 @@ sudo tail -F /var/log/apache2/error.log
 sudo tail -F /var/log/apache2/other_vhosts_access.log
 ```
 
-### 如何将che server中tomcat的日志级别调到debug
+### 7. 如何将che server中tomcat的日志级别调到debug
 
 tomcat的logger默认级别是`info`。有时为了方便调试，我们需要把logger设为`debug`，以便输出更多的Java日志。
 
@@ -585,7 +587,7 @@ wget https://raw.githubusercontent.com/eclipse/che-lib/master/che-tomcat8-slf4j-
 
 更多办法可以参考这个issue: <https://github.com/eclipse/che/issues/613>
 
-### 如何将workspace machine中植入的tomcat的日志级别调到debug
+### 8. 如何将workspace machine中植入的tomcat的日志级别调到debug
 
 当我们创建workspace时，che server会在内部启动一个docker container，并且将`lib/ws-agent.zip`植入进去。
 
@@ -597,11 +599,11 @@ wget https://raw.githubusercontent.com/eclipse/che-lib/master/che-tomcat8-slf4j-
 docker cp <containerId>:/file/path/within/container /host/path/target
 ```
 
-### 如何知道che的docker image里有什么
+### 9. 如何知道che的docker image里有什么
 
 在这里：<https://github.com/eclipse/che/blob/master/Dockerfile>
 
-### 如何知道workspace machine里有什么
+### 10. 如何知道workspace machine里有什么
 
 每个workspace都对应了一个recipe，里面定义了这个workspace是什么语言，需要安装什么软件，暴露哪些端口等等。
 
