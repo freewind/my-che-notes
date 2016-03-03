@@ -221,7 +221,7 @@ docker run -ti --net=host
 
 这里面有几个需要注意的点：
 
-1. `-e DOCKER_MACHINE_HOST=198.199.105.97` 这是非常重要的一步。当我们使用浏览器的机器与che运行的机器不在同一台机器上时，就必须设置这个参数，否则不能正常工作，这个问题曾经困扰了我们很久。后面的ip就是运行che的服务器的ip。这个参数与`che.sh`的`-r:198.199.105.97`作用是一样的
+1. `-e CHE_DOCKER_MACHINE_HOST=198.199.105.97` 这是非常重要的一步。当我们使用浏览器的机器与che运行的机器不在同一台机器上时，就必须设置这个参数，否则不能正常工作，这个问题曾经困扰了我们很久。后面的ip就是运行che的服务器的ip。这个参数与`che.sh`的`-r:198.199.105.97`作用是一样的
 
 2. `-v /var/run/docker.sock:/var/run/docker.sock` 这也是非常重要的一个参数。这样使得che可以在内部复用外面提供的docker来创建各workspace machine，从而避免了docker in docker所带来的各种问题
 
@@ -342,7 +342,7 @@ mvn clean install --offline
 ./che.sh -r:198.199.105.97 run
 ```
 
-`-r`参数与前面提到的`DOCKER_MACHINE_HOST`是一个作用。
+`-r`参数与前面提到的`CHE_DOCKER_MACHINE_HOST`是一个作用。
 
 Che的API
 ---------
