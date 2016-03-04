@@ -205,6 +205,7 @@ che的仓库和模块
 - 全局性的配置：<https://github.com/eclipse/che-parent>
 - 开发规范和资源等：<https://github.com/eclipse/che-dev>
 - 各种Dockerfile的定义：<https://github.com/codenvy/dockerfiles>，比如我们使用的比较多的`ubuntu_jdk8`的recipe的定义就在这里：<https://github.com/codenvy/dockerfiles/blob/master/ubuntu_jdk8/Dockerfile>
+- 用于生成che docker image的Dockerfile: <https://github.com/eclipse/che/blob/master/Dockerfile>
 - 生成的che docker image在这里：<https://hub.docker.com/r/codenvy/che/tags>
 - 模板项目：<https://github.com/che-samples>，我们在创建workspace或者project时可以看到一些示例项目，是在这里定义的
 - 预定义的recipe: <https://github.com/eclipse/che/blob/0d0bbf900114e9c9964d386b02f0904a913ae4e0/assembly/assembly-ide-war/src/main/resources/predefined-recipes.json>
